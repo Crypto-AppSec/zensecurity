@@ -1,2 +1,110 @@
-<head> </head>
-<body>  Hi</body>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trupti Shiralkar — Security Leader</title>
+  <meta name="description" content="Portfolio site for Trupti Shiralkar: blogs, talks, podcasts, and videos in cybersecurity." />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/styles.css" />
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="Home">
+      <img src="assets/favicon.svg" alt="" class="logo"/>
+      <div class="brand-text">
+        <span class="name">Trupti Shiralkar</span>
+        <span class="tag">Security Leader • Advisor • Speaker</span>
+      </div>
+    </a>
+    <nav class="nav">
+      <a href="#work">Work</a>
+      <a href="#about">About</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-content">
+        <h1>Building resilient, secure software at scale.</h1>
+        <p class="lede">Product Security & AppSec leadership across Fortune 500 and high-growth startups. Here’s a curated collection of blogs, podcasts, talks and interviews.</p>
+        <div class="actions">
+          <a class="btn primary" href="#work">Explore Work</a>
+          <a class="btn ghost" href="#contact">Connect</a>
+        </div>
+      </div>
+      <div class="hero-art" aria-hidden="true">
+        <div class="orb"></div><div class="orb"></div><div class="orb"></div>
+      </div>
+    </section>
+
+    <section id="work" class="work">
+      <div class="toolbar">
+        <div class="search">
+          <input id="searchInput" type="search" placeholder="Search by title, topic, or source…" aria-label="Search work">
+          <button id="clearSearch" title="Clear search" aria-label="Clear search">&times;</button>
+        </div>
+        <div class="filters">
+          <button class="chip active" data-filter="all">All</button>
+          <button class="chip" data-filter="blog">Blogs</button>
+          <button class="chip" data-filter="podcast">Podcasts</button>
+          <button class="chip" data-filter="talk">Talks</button>
+          <button class="chip" data-filter="video">Videos</button>
+          <button class="chip" data-filter="profile">Profiles</button>
+        </div>
+        <div class="sort">
+          <label for="sortSelect" class="sr-only">Sort</label>
+          <select id="sortSelect" aria-label="Sort content">
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="title">Title A→Z</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="cards" class="cards" aria-live="polite"></div>
+    </section>
+
+    <section id="about" class="about">
+      <div class="about-card">
+        <h2>About</h2>
+        <p>Trupti Shiralkar is a cybersecurity leader and advisor with deep expertise in Application Security, Product Security, and GRC alignment. She has led security programs at organizations including Datadog, Illumio, Amazon, and more, and serves on the advisory board at Backslash Security.</p>
+        <ul class="facts">
+          <li>Focus: AppSec, Product Security, Secure SDLC, Risk & ROI, AI in security</li>
+          <li>Roles: Security Leader, Advisor, Speaker, Panelist</li>
+          <li>Formats: Blogs, conference talks, podcasts, and video interviews</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="contact" class="contact">
+      <h2>Contact</h2>
+      <div class="contact-grid">
+        <a class="contact-card" target="_blank" rel="noopener" href="https://x.com/tshiralkar">
+          <span class="contact-title">X / Twitter</span>
+          <span class="contact-hint">@tshiralkar</span>
+        </a>
+        <a class="contact-card" target="_blank" rel="noopener" href="https://www.youtube.com/results?search_query=Trupti+Shiralkar">
+          <span class="contact-title">YouTube</span>
+          <span class="contact-hint">Talks & Interviews</span>
+        </a>
+        <a class="contact-card" target="_blank" rel="noopener" href="mailto:">
+          <span class="contact-title">Email</span>
+          <span class="contact-hint">Add your contact</span>
+        </a>
+      </div>
+      <p class="note">All content items below are loaded from a separate <code>data/content.json</code> file for easy curation and updates.</p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div>© <span id="year"></span> Trupti Shiralkar. All rights reserved.</div>
+    <div class="small">Site by <a href="#" aria-label="designer">you</a>. Built with vanilla HTML, CSS, and JS.</div>
+  </footer>
+
+  <script src="assets/script.js" type="module"></script>
+</body>
+</html>
