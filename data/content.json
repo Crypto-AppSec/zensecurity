@@ -20,15 +20,17 @@
       ]
     },
     {
-      "type": "podcast",
-      "title": "Cyber Economics and Keeping Up with Innovation (Apple Podcasts)",
-      "source": "Apple Podcasts",
-      "url": "https://podcasts.apple.com/us/podcast/security-grc-decoded/id1795144450",
+      "type": "talk",
+      "title": "Leveraging Software Bill of Material to foster open source software security",
+      "source": " Diana Initiative / Open Source Security Foundation",
+      "url": "https://www.youtube.com/watch?v=xYZnF-e3t_Q&list=PLruWyvc_zJ9Z4UzU60VDox8-DHgTkhOnx&index=2&t=2s",
       "date": "2025-08-07",
-      "description": "Episode of Security & GRC Decoded featuring Trupti.",
-      "author": "ComplianceCow",
+      "description": "Open Source Security talk on SBOMs and supply chain security.",
+      "author": "Trupti Shiralkar",
       "tags": [
-        "Podcast"
+        "supply chain security",
+        "SBOM",
+        "Open Source Security"
       ]
     },
     {
