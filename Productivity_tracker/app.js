@@ -1,6 +1,8 @@
 // app.js — Productivity Tracker (Supabase-backed, plain HTML/CSS/JS)
 
 // -- Configuration from config.js --
+// Read before createClient: Supabase strips the tokens from the URL once it parses them
+const isPasswordRecoveryLink = /type=recovery/.test(window.location.hash);
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // -- Local Storage Keys for Anonymous Users --
@@ -200,6 +202,17 @@ async function register(email, password) {
   return { autoLogin: false };
 }
 
+async function requestPasswordReset(email) {
+  const redirectTo = window.location.origin + window.location.pathname;
+  const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo });
+  if (error) throw error;
+}
+
+async function updatePassword(password) {
+  const { error } = await supabaseClient.auth.updateUser({ password });
+  if (error) throw error;
+}
+
 async function logout() {
   sessionStorage.removeItem('pt_anonymous_user');
   sessionStorage.removeItem('pt_anonymous_token');
@@ -237,6 +250,7 @@ async function route() {
       case 'about':   renderAbout(root); break;
       case 'privacy': renderPrivacy(root); break;
       case 'contact': renderContact(root); break;
+      case 'reset-password': renderResetPassword(root); break;
       default:
         root.innerHTML = '<div class="container text-center mt-4"><h2>Page not found</h2></div>';
     }
@@ -462,6 +476,10 @@ window.addEventListener('hashchange', () => route());
 window.addEventListener('load', async () => {
   initThemeToggle();   // apply theme before anything renders
   await checkAuth();
+  // Arrived from a password-reset email: Supabase has signed the user in, so ask for a new password
+  if (isPasswordRecoveryLink && currentUser && !currentUser.isAnonymous) {
+    history.replaceState(null, '', '#reset-password');
+  }
   await route();
   initHamburger();
   initPomodoroWidget();
@@ -474,6 +492,11 @@ window.addEventListener('load', async () => {
       updateNav();
       const hash = window.location.hash;
       if (!hash || hash === '#login') window.location.hash = '#app';
+    } else if (event === 'PASSWORD_RECOVERY' && session) {
+      currentUser  = session.user;
+      sessionToken = session.access_token;
+      updateNav();
+      window.location.hash = '#reset-password';
     } else if (event === 'SIGNED_OUT') {
       currentUser  = null;
       sessionToken = null;
@@ -487,6 +510,7 @@ function renderLogin(root) {
   let authMode = 'signin';
 
   function getHTML() {
+    if (authMode === 'forgot') return getForgotHTML();
     const isReg = authMode === 'register';
     return `
       <div class="container">
@@ -510,6 +534,10 @@ function renderLogin(root) {
               <button type="button" id="pw-toggle" class="pw-toggle" aria-label="Toggle password visibility">👁</button>
               <span class="field-error" id="pw-err"></span>
             </div>
+            ${isReg ? '' : `
+            <div class="auth-forgot-row">
+              <button type="button" id="auth-forgot" class="auth-link-btn">Forgot password?</button>
+            </div>`}
             ${isReg ? `
             <div class="form-group">
               <label for="auth-password-confirm">Confirm Password</label>
@@ -534,6 +562,32 @@ function renderLogin(root) {
           <p style="font-size:0.75rem;color:#6b7280;text-align:center;margin-top:0.5rem;line-height:1.4;">
             No user account required. Your progress will be saved locally. No user data will be saved to the database.
           </p>
+        </div>
+      </div>
+    `;
+  }
+
+  function getForgotHTML() {
+    return `
+      <div class="container">
+        <div class="auth-box" id="auth-card">
+          <div class="auth-logo">🔑</div>
+          <h2 class="auth-title" id="auth-title">Reset Password</h2>
+          <p class="auth-subtitle" id="auth-subtitle">Enter your account email and we'll send you a link to set a new password</p>
+
+          <div id="auth-status" class="auth-status" aria-live="polite" style="display:none"></div>
+
+          <form id="auth-form" onsubmit="return false;" novalidate>
+            <div class="form-group">
+              <label for="auth-email">Email Address</label>
+              <input type="email" id="auth-email" autocomplete="email" placeholder="you@example.com" required/>
+              <span class="field-error" id="email-err"></span>
+            </div>
+            <button type="submit" id="auth-submit" class="btn-primary auth-submit-btn">Send Reset Link</button>
+          </form>
+
+          <div class="auth-divider"><span>or</span></div>
+          <button id="auth-toggle" class="btn-secondary auth-toggle-btn">Back to Sign In</button>
         </div>
       </div>
     `;
@@ -569,9 +623,12 @@ function renderLogin(root) {
       toggleBtn?.removeAttribute('disabled');
       anonBtn?.removeAttribute('disabled');
     }
-    btn.textContent = loading
-      ? (authMode === 'register' ? 'Creating Account…' : 'Signing In…')
-      : (authMode === 'register' ? 'Create Account' : 'Sign In');
+    const labels = {
+      signin:   ['Sign In', 'Signing In…'],
+      register: ['Create Account', 'Creating Account…'],
+      forgot:   ['Send Reset Link', 'Sending…'],
+    }[authMode];
+    btn.textContent = labels[loading ? 1 : 0];
   }
   function validate(email, password, confirm) {
     let ok = true;
@@ -646,7 +703,37 @@ function renderLogin(root) {
     }
   }
 
+  async function doForgot() {
+    clearErrors();
+    const email = (document.getElementById('auth-email')?.value || '').trim();
+    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      setFieldError('email-err', 'Please enter a valid email address.');
+      document.getElementById('auth-email')?.classList.add('input-error');
+      return;
+    }
+    setLoading(true);
+    try {
+      await requestPasswordReset(email);
+      setLoading(false);
+      // Same message whether or not the account exists, so the form can't be used to probe for emails
+      setStatus('📧 If an account exists for that email, a reset link is on its way. Check your inbox (and spam folder).', 'success');
+    } catch (err) {
+      setLoading(false);
+      const msg = err.message || '';
+      if (/rate limit|security purposes/i.test(msg)) {
+        setStatus('Please wait a minute before requesting another reset email.', 'warning');
+      } else {
+        setStatus(msg || 'Could not send reset email. Please try again.', 'error');
+      }
+    }
+  }
+
   function attachListeners() {
+    // Forgot password
+    document.getElementById('auth-forgot')?.addEventListener('click', () => {
+      authMode = 'forgot';
+      render();
+    });
     // Password toggle
     document.getElementById('pw-toggle')?.addEventListener('click', () => {
       const inp = document.getElementById('auth-password');
@@ -664,7 +751,9 @@ function renderLogin(root) {
     // Form submit
     document.getElementById('auth-form')?.addEventListener('submit', e => {
       e.preventDefault();
-      authMode === 'register' ? doRegister() : doLogin();
+      if (authMode === 'register') doRegister();
+      else if (authMode === 'forgot') doForgot();
+      else doLogin();
     });
     // Clear field errors on typing
     document.getElementById('auth-email')?.addEventListener('input', () => { setFieldError('email-err',''); document.getElementById('auth-email')?.classList.remove('input-error'); });
@@ -672,6 +761,79 @@ function renderLogin(root) {
   }
 
   render();
+}
+
+// ─── Reset Password Page (landing page for the reset-email link) ────────────
+function renderResetPassword(root) {
+  if (currentUser.isAnonymous) { window.location.hash = '#app'; return; }
+
+  root.innerHTML = `
+    <div class="container">
+      <div class="auth-box" id="auth-card">
+        <div class="auth-logo">🔑</div>
+        <h2 class="auth-title">Set a New Password</h2>
+        <p class="auth-subtitle">Choose a new password for ${escapeHtml(currentUser.email)}</p>
+
+        <div id="auth-status" class="auth-status" aria-live="polite" style="display:none"></div>
+
+        <form id="reset-form" onsubmit="return false;" novalidate>
+          <div class="form-group" style="position:relative">
+            <label for="reset-password">New Password</label>
+            <input type="password" id="reset-password" autocomplete="new-password" placeholder="Min. 12 characters" required/>
+            <button type="button" id="pw-toggle" class="pw-toggle" aria-label="Toggle password visibility">👁</button>
+            <span class="field-error" id="pw-err"></span>
+          </div>
+          <div class="form-group">
+            <label for="reset-password-confirm">Confirm New Password</label>
+            <input type="password" id="reset-password-confirm" autocomplete="new-password" placeholder="Repeat your password" required/>
+            <span class="field-error" id="pw-confirm-err"></span>
+          </div>
+          <button type="submit" id="reset-submit" class="btn-primary auth-submit-btn">Update Password</button>
+        </form>
+      </div>
+    </div>
+  `;
+
+  const status = document.getElementById('auth-status');
+  const btn    = document.getElementById('reset-submit');
+  const setStatus = (msg, type = 'error') => {
+    status.textContent = msg;
+    status.className = `auth-status auth-status--${type}`;
+    status.style.display = msg ? 'block' : 'none';
+  };
+
+  document.getElementById('pw-toggle').addEventListener('click', () => {
+    const inp = document.getElementById('reset-password');
+    inp.type = inp.type === 'text' ? 'password' : 'text';
+    document.getElementById('pw-toggle').textContent = inp.type === 'text' ? '🙈' : '👁';
+  });
+
+  document.getElementById('reset-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    setStatus('');
+    const password = document.getElementById('reset-password').value;
+    const confirm  = document.getElementById('reset-password-confirm').value;
+    document.getElementById('pw-err').textContent = password.length < 12 ? 'Password must be at least 12 characters.' : '';
+    document.getElementById('pw-confirm-err').textContent = confirm !== password ? 'Passwords do not match.' : '';
+    if (password.length < 12 || confirm !== password) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Updating…';
+    try {
+      await updatePassword(password);
+      showToast('✅ Password updated — you are signed in.');
+      window.location.hash = '#app';
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = 'Update Password';
+      const msg = err.message || '';
+      if (/different from the old/i.test(msg)) {
+        setStatus('New password must be different from your current one.', 'error');
+      } else {
+        setStatus(msg || 'Could not update password. Please request a new reset link.', 'error');
+      }
+    }
+  });
 }
 
 // ─── Tracker Page ────────────────────────────────────────────────────────────
