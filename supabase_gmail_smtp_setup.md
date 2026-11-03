@@ -97,12 +97,44 @@ Click the **"Save changes"** button at the bottom right.
 
 1. Open the app: [http://localhost:3000/Productivity_tracker/#login](http://localhost:3000/Productivity_tracker/#login)
 2. Click **"Don't have an account? Register"**
-3. Enter any real email address and a password (min. 6 characters)
+3. Enter any real email address and a password (min. 12 characters)
 4. Click **"Create Account"**
 5. You should see: ✅ `Account created! Check your email to confirm your address, then sign in.`
 6. Check the inbox of the email you used — you'll receive a confirmation email from `axza2863@gmail.com`
 7. Click the confirmation link in the email
 8. Return to the app and **Sign In** with your credentials
+
+### Test the password reset email
+1. Log out, then click **Forgot password?** on the Sign In screen
+2. Enter the account's email and click **Send Reset Link**
+3. Open the email and click the link **in the same browser**. It should open the **Set a New Password** page.
+4. Enter a new password twice (min. 12 characters) and click **Update Password**. You should land on the tracker, signed in.
+5. Log out and confirm the new password works and the old one is rejected
+
+> ℹ️ Both emails link back to the app only if its address is in **Authentication → URL Configuration → Redirect URLs** (see the Productivity Tracker README, *Configure Supabase Auth URLs*).
+
+---
+
+## 📬 Improving Deliverability (Emails Going to Spam)
+
+Sending through a personal Gmail account works, but confirmation and reset emails often land in **spam** because:
+
+- An app's automated email comes from a personal `@gmail.com` address, a common phishing pattern
+- The links point to `supabase.co`, which doesn't match the sender
+- The domain `zensecurity.in` has no SPF/DKIM records vouching for the sender
+
+**Recommended fix: send from your own domain through a transactional email service.**
+
+1. Sign up with a transactional email provider such as **Resend**, **Brevo** or **Postmark** (all have free tiers large enough for auth emails)
+2. Add the domain `zensecurity.in` in the provider and add the DNS records it gives you at your domain's DNS host:
+   - **SPF** (TXT) and **DKIM** (TXT/CNAME), which prove the provider may send for `zensecurity.in`
+   - **DMARC** (TXT on `_dmarc`), e.g. `v=DMARC1; p=none; rua=mailto:<your address>`
+3. In Supabase → **Authentication → Emails → SMTP Settings**, replace the Gmail values with the provider's SMTP host, port, username and password, and set:
+   - **Sender email**: `noreply@zensecurity.in`
+   - **Sender name**: `Productivity Tracker`
+4. In **Authentication → Emails → Templates**, edit the *Confirm signup* and *Reset password* templates. Use a clear subject (e.g. "Confirm your Productivity Tracker account") and add a sentence explaining why the person received the email.
+
+Until this is done, ask testers to mark the email **"Not spam"**. That helps a little, but only steps 1–3 actually fix the problem.
 
 ---
 
@@ -123,6 +155,9 @@ Click the **"Save changes"** button at the bottom right.
 | `Invalid login credentials` | Wrong email/password at sign-in | Make sure you confirmed your email first |
 | `User already registered` | Email already exists in Supabase | Use Sign In instead of Register |
 | Email not received | Check spam folder | Also verify the App Password has no spaces |
+| Emails consistently land in spam | Personal Gmail sender, no SPF/DKIM for your domain | See **Improving Deliverability** above |
+| `For security purposes, you can only request this after N seconds` | Per-user email rate limit (the 60 s interval above) | Wait and retry |
+| Reset link opens the Sign In page, not *Set a New Password* | Link already used or expired | Request a new one via **Forgot password?** |
 | Gmail blocks the send | Less secure app access issue | App Passwords bypass this — no extra setup needed |
 
 ---
@@ -141,3 +176,5 @@ Click the **"Save changes"** button at the bottom right.
 - [ ] Password: App Password without spaces
 - [ ] Saved changes in Supabase
 - [ ] Tested registration — confirmation email received ✅
+- [ ] Tested **Forgot password?** — reset email received and new password works ✅
+- [ ] (Recommended) Sending from your own domain with SPF/DKIM/DMARC so emails avoid spam

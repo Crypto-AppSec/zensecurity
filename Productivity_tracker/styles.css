@@ -562,6 +562,24 @@ input[type="date"]:focus {
 }
 .pw-toggle:hover { color: var(--accent-color); }
 
+/* Forgot password link */
+.auth-forgot-row {
+  display: flex;
+  justify-content: flex-end;
+  margin: -0.5rem 0 0.25rem;
+}
+.auth-link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--accent-color);
+}
+.auth-link-btn:hover { text-decoration: underline; }
+
 /* Submit button */
 .auth-submit-btn {
   width: 100%;
