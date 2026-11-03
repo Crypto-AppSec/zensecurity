@@ -192,7 +192,9 @@ async function signInAnonymously() {
 }
 
 async function register(email, password) {
-  const { data, error } = await supabaseClient.auth.signUp({ email, password });
+  // Send the confirmation link back to wherever the app is hosted (not the Supabase "Site URL" default)
+  const emailRedirectTo = window.location.origin + window.location.pathname;
+  const { data, error } = await supabaseClient.auth.signUp({ email, password, options: { emailRedirectTo } });
   if (error) throw error;
   if (data.session) { await checkAuth(); return { autoLogin: true }; }
   return { autoLogin: false };
