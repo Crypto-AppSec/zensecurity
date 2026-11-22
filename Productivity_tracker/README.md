@@ -12,6 +12,8 @@ A neuroscience-backed daily protocol tracker built as a **zero-build, static web
 - **Guest Mode (Anonymous)**: Instant access — no sign-up required. All data stored in `localStorage` only; nothing is sent to the server.
 - **Registered Users**: Secure email + password auth via **Supabase Auth**, with full cloud-sync of tracker logs and custom activities.
 - Toggle between Sign In and Register on a single auth page, with inline field validation, password visibility toggle, and clear error/success feedback.
+- **Email confirmation**: new accounts must confirm their email before signing in. The confirmation link returns the user to the page they signed up on (`emailRedirectTo`).
+- **Forgot password**: a *Forgot password?* link on the Sign In screen emails a reset link. The link opens a *Set a New Password* page (`#reset-password`); after saving, the user is signed in. The request screen shows the same message whether or not the email is registered, so it can't be used to check which emails have accounts.
 
 ### 📅 Three-Phase Daily Tracker
 - **🌅 Morning** — Sunlight exposure, delayed caffeine, cold shower
@@ -122,7 +124,22 @@ const SUPABASE_ANON_KEY = 'your-anon-key';
 
 Get these from: **Supabase Dashboard → Your Project → Settings → API**
 
-### 2. Create Database Tables
+### 2. Configure Supabase Auth URLs
+
+Confirmation and password-reset emails contain a link back to the app. Supabase only redirects to addresses on its allow list, so in **Supabase Dashboard → Authentication → URL Configuration** set:
+
+| Setting | Value |
+|---|---|
+| **Site URL** | `https://zensecurity.in/Productivity_tracker/` |
+| **Redirect URLs** | `https://zensecurity.in/Productivity_tracker/**` |
+| | `http://localhost:3000/Productivity_tracker/**` (local testing) |
+| | `http://localhost:3000/**` (local testing) |
+
+If you host the app somewhere else, add that address too. Links to an address that isn't listed fall back to the Site URL.
+
+Also configure custom SMTP so emails reach real users. See [`supabase_gmail_smtp_setup.md`](../supabase_gmail_smtp_setup.md).
+
+### 3. Create Database Tables
 
 Run the following SQL in your Supabase **SQL Editor**:
 
@@ -165,12 +182,12 @@ create policy "Own trackers" on trackers        for all using (auth.uid() = user
 create policy "Own custom"   on custom_trackers for all using (auth.uid() = user_id);
 ```
 
-### 3. Run Locally
+### 4. Run Locally
 
-From the **workspace root** (`zensecurity-main/`):
+From the **repository root**:
 
 ```bash
-npx serve . -l 3000
+npm run dev        # same as: npx serve . -l 3000
 ```
 
 Then open: **[http://localhost:3000/Productivity_tracker/](http://localhost:3000/Productivity_tracker/)**
@@ -185,7 +202,8 @@ All routing is **hash-based** (`window.location.hash`), handled in `app.js`.
 
 | Hash | Page |
 |---|---|
-| `#login` | Sign In / Register / Guest access |
+| `#login` | Sign In / Register / Forgot password / Guest access |
+| `#reset-password` | Set a new password (opened from the reset email; requires the signed-in session the link creates) |
 | `#app` or `#tracker` | Daily Tracker (default) |
 | `#summary` | Progress Analytics |
 | `#custom` | Custom Tracker Builder |
@@ -237,14 +255,34 @@ All default activities can be **reordered via drag and drop**. Custom activities
 
 This is a static site — deploy anywhere that serves files over HTTP.
 
-### Netlify / Vercel / GitHub Pages
+### GitHub Pages (current production setup)
+- The live site **https://zensecurity.in** is served by GitHub Pages from the **`Crypto-AppSec/zensecurity`** repository (custom domain set in the root `CNAME` file).
+- `.github/workflows/deploy-pages.yml` deploys the whole repository on every push to `main`. The root `index.html` redirects to `zensecurity-main/`, which replaces the old `netlify.toml` redirect.
+- **Forks don't deploy to zensecurity.in.** Changes pushed to a fork (e.g. `anirbang324/zensecurity`) go live only after a pull request into `Crypto-AppSec/zensecurity` is merged. A successful workflow run on a fork doesn't update the live site.
+- GitHub Pages caches files for about 10 minutes. Hard-refresh (Ctrl+F5) after a deploy.
+
+### Netlify / Vercel
 1. Push the repo to GitHub
 2. Connect to Netlify or Vercel
 3. Set the **publish directory** to `./` (root) or `Productivity_tracker/` depending on your setup
 4. No build command needed
+5. Add the new site address to the Supabase **Redirect URLs** (see Quick Start step 2)
 
 ### Manual Upload
 Upload the `Productivity_tracker/` folder contents to any web host. No server-side runtime required.
+
+---
+
+## 🩺 Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| Nobody can sign in or register; requests to `*.supabase.co/auth/v1/...` return **HTTP 521** | The Supabase project is paused (free projects pause after ~1 week with no activity) or restarting | Supabase Dashboard → project → **Restore project** / **Restart project**. Check that **Status** shows *Healthy*. |
+| Confirmation or reset link opens the wrong site (e.g. an old Netlify URL) | Site URL / Redirect URLs out of date | Update **Authentication → URL Configuration** (Quick Start step 2) |
+| Reset link lands on the Sign In page instead of *Set a New Password* | Link already used or expired (links are single-use) | Request a new link from *Forgot password?* |
+| "Please wait a minute before requesting another reset email" | Supabase email rate limit (one email per user per 60 s) | Wait and retry |
+| Confirmation / reset emails go to spam | Emails sent through a personal Gmail account, with no SPF/DKIM for the sender's domain | Send through a transactional email service from your own domain. See [`supabase_gmail_smtp_setup.md`](../supabase_gmail_smtp_setup.md#-improving-deliverability-emails-going-to-spam) |
+| Code change pushed but the live site is unchanged | Pushed to a fork, or GitHub Pages cache | See **Deployment** above |
 
 ---
 
